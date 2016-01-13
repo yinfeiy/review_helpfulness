@@ -18,10 +18,10 @@ feature_path = '../cache/features/'
 score_path   = '../dataset/labels/'
 
 score_type = 'xofy'
-overwrite_model = False
+overwrite_model = True
 
 asp_dict = {'serv':'service', 'func':'functionality', 'appe':'appearance', 'o':'other',
-        'qual':'quality', 'use':'usability', 'price':'price', 'brand':'brand'}
+        'qual':'quality', 'use':'usability', 'price':'price', 'brand':'brand', 'ovrl':'overall'}
 
 genres = sys.argv[2:]
 
@@ -71,8 +71,8 @@ for genre in genres:
         # classification: training and testing
         model_name = '{0}/{1}.{2}.fold_{3}.{4}.libsvm.regression.model'.format(model_path, genre, 'l2', fold_id, feature_name)
         if overwrite_model or not os.path.exists(model_name):
-            mse = [0]*4 # mseuracy
-            for cc in range(4):
+            mse = [0]*5 # mseuracy
+            for cc in range(5):
                 tmpC = math.pow(10, cc-2)
                 print 'testing C = ', tmpC
                 mse[cc] = svm_train(y_train, x_train, '-s 3 -t 2 -v 5 -q -c {0}'.format(tmpC) )

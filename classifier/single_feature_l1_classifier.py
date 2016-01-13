@@ -21,7 +21,7 @@ score_type = 'xofy'
 overwrite_model = False
 
 asp_dict = {'serv':'service', 'func':'functionality', 'appe':'appearance', 'o':'other',
-        'qual':'quality', 'use':'usability', 'price':'price', 'brand':'brand'}
+        'qual':'quality', 'use':'usability', 'price':'price', 'brand':'brand', 'ovrl':'overall'}
 
 aspect = asp_dict[sys.argv[2]]
 genres = sys.argv[3:]
@@ -52,7 +52,7 @@ for genre in genres:
         ###################################################################
         # classification: training and testing
         # Filter the training set by aspect label
-        fname_asps = join(score_path, '{0}.asps'.format(genre))
+        fname_asps = join(score_path, '{0}.asps.majority'.format(genre))
         asps = read_asps_from_file(fname_asps)
         dummy_ys = [0] * len(asps)
         _, asps_train = get_train_data(dummy_ys, asps, folds, fold_id)

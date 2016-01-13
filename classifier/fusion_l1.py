@@ -22,7 +22,7 @@ score_path   = '../dataset/labels/'
 score_type = 'xofy'
 overwrite_model = True
 asp_dict = {'serv':'service', 'func':'functionality', 'appe':'appearance', 'o':'other',
-        'qual':'quality', 'use':'usability', 'price':'price', 'brand':'brand'}
+        'qual':'quality', 'use':'usability', 'price':'price', 'brand':'brand', 'ovrl':'overall'}
 
 aspect = asp_dict[sys.argv[1]]
 genres = sys.argv[2:]
@@ -68,7 +68,7 @@ for genre in genres:
         ###################################################################
         # classification: training and testing
         # Down sampling for genres has too much examples
-        fname_asps = join(score_path, '{0}.asps'.format(genre))
+        fname_asps = join(score_path, '{0}.asps.majority'.format(genre))
         asps = read_asps_from_file(fname_asps)
         dummy_ys = [0] * len(asps)
         _, asps_train = get_train_data(dummy_ys, asps, folds, fold_id)
@@ -94,6 +94,7 @@ for genre in genres:
         else:
             m = svm_load_model( model_name )
 
+        svm_predict(y_train, x_train, m)
         # test set
         y_pred, mse_test, y_pred_2 = svm_predict(y_test, x_test, m)
         out_file = '{0}/{1}.{2}.fold_{3}.{4}.libsvm.regression.pred'.format(result_path, genre, aspect, fold_id, feature_name)

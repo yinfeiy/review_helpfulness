@@ -10,8 +10,8 @@ else:
     genres = ['watches', 'cellphone', 'home', 'outdoor', 'electronics']
 
 for genre in genres:
-    #label = 'xofy'
-    label = 'l2'
+    label = 'xofy'
+    #label = 'l2'
 
     file_template = '../cache/results/{0}.{1}.fold_{2}.{3}.libsvm.regression.pred'
 
@@ -32,9 +32,9 @@ for genre in genres:
         s, pv = stats.spearmanr(arr_1, arr_2)
         pearson.append(p)
         spearman.append(s)
-        print p
+        print p, s
 
-    print '{0:.3f}'.format(np.mean(pearson)), #np.mean(spearman)
+    print '{0:.3f}, {1:.3f}'.format(np.mean(pearson), np.mean(spearman))
 
 print "\n"
 
