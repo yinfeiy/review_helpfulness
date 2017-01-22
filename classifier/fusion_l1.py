@@ -8,7 +8,7 @@ sys.path.append('../thirdparty/libsvm/python')
 from svmutil import *
 
 #feature_list = ['topic', 'str', 'ugr']
-feature_list = ['ugr', 'str', 'inquirer', 'liwc']
+feature_list = ['ugr', 'str', 'inquirer', 'liwc', 'topic']
 
 feature_name = '_'.join(feature_list)
 

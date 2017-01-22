@@ -80,7 +80,7 @@ for genre in genres:
             mse_i = mse.index(min(mse))
             best_c = math.pow(10, mse_i-2)
         else:
-            best_c = 0.1
+            best_c = 1.0
 
         print 'The best C is: ', best_c
 

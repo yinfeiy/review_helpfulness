@@ -17,7 +17,6 @@ develop_path  = '../cache/develop/'
 feature_path = '../cache/features/'
 score_path   = '../dataset/labels/'
 
-score_type = 'xofy'
 overwrite_model = True
 
 asp_dict = {'serv':'service', 'func':'functionality', 'appe':'appearance', 'o':'other',
@@ -49,12 +48,13 @@ for genre in genres:
         y_train = scores; x_train = features
         x_train, y_train = sample_dataset(x_train, y_train, 10000)
 
+        scores = []; features = []
         for aspect in asp_dict.values():
             fname_test_res  = '{0}/{1}.{2}.fold_{3}.{4}.libsvm.regression.pred'.format(result_path, genre, aspect, fold_id, feature_name)
             if not os.path.exists(fname_test_res):
                 continue
             tmp_scores = []; tmp_feats = []
-            lines = get_content(fname_dev_res)
+            lines = get_content(fname_test_res)
             for i in range(len(lines)):
                 line = lines[i]; ts = line.strip().split()
                 score = float(ts[0]); feat= float(ts[1])
@@ -84,7 +84,7 @@ for genre in genres:
             m = svm_train(y_train, x_train, '-s 3 -t 2 -q -c {0}'.format(best_c) )
             svm_save_model( model_name, m )
         else:
-            best_c = 10
+            best_c = 100
             m = svm_train(y_train, x_train, '-s 3 -t 2 -q -c {0}'.format(best_c) )
 
         # test set
