@@ -1,3 +1,5 @@
 cache
 dataset
+dataset_v2
 thirdparty
+*.pyc
