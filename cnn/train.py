@@ -12,6 +12,7 @@ import data_helpers
 from text_cnn import TextCNN
 from tensorflow.contrib import learn
 from tensorflow.contrib.tensorboard.plugins import projector
+from scipy import stats
 
 # Model Hyperparameters
 tf.flags.DEFINE_string("genre", "outdoor", "Genre (default: outdoor)")
@@ -23,8 +24,8 @@ tf.flags.DEFINE_float("l2_reg_lambda", 0.1, "L2 regularizaion lambda (default: 0
 
 # Training parameters
 tf.flags.DEFINE_integer("batch_size", 64, "Batch Size (default: 64)")
-tf.flags.DEFINE_integer("num_epochs", 50, "Number of training epochs (default: 200)")
-tf.flags.DEFINE_integer("evaluate_every", 200, "Evaluate model on dev set after this many steps (default: 100)")
+tf.flags.DEFINE_integer("num_epochs", 100, "Number of training epochs (default: 200)")
+tf.flags.DEFINE_integer("evaluate_every", 100, "Evaluate model on dev set after this many steps (default: 100)")
 tf.flags.DEFINE_integer("checkpoint_every", 5000, "Save model after this many steps (default: 100)")
 # Misc Parameters
 tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
@@ -60,6 +61,7 @@ print ('Loading Data...')
 fold_ids = range(10)
 
 max_document_length = max([len(x.split(" ")) for x in reviews])
+max_document_length = 300
 vocab_processor = learn.preprocessing.VocabularyProcessor(max_document_length)
 vocab_processor.fit(reviews)
 
@@ -76,10 +78,14 @@ for fold_id in fold_ids:
     x_train.extend(x_dev)
     y_train.extend(y_dev)
 
+    # Sampling
+    x_train, y_train = sample_dataset(x_train, y_train, 20000)
+
     x_train = np.array(x_train)
     y_train = np.array([ [y] for y in y_train])
+
     x_dev = np.array(x_test)
-    y_dev = np.array(y_test)
+    y_dev = np.array([ [y] for y in y_test])
 
     y_train = np.array(y_train); y_dev = np.array(y_dev)
 
@@ -113,18 +119,18 @@ for fold_id in fold_ids:
             grad_summaries = []
             for g, v in grads_and_vars:
                 if g is not None:
-                    grad_hist_summary = tf.histogram_summary("{}/grad/hist".format(v.name), g)
-                    sparsity_summary = tf.scalar_summary("{}/grad/sparsity".format(v.name), tf.nn.zero_fraction(g))
+                    grad_hist_summary = tf.summary.histogram("{}/grad/hist".format(v.name), g)
+                    sparsity_summary = tf.summary.scalar("{}/grad/sparsity".format(v.name), tf.nn.zero_fraction(g))
                     grad_summaries.append(grad_hist_summary)
                     grad_summaries.append(sparsity_summary)
-            grad_summaries_merged = tf.merge_summary(grad_summaries)
+            grad_summaries_merged = tf.summary.merge(grad_summaries)
 
-            loss_summary = tf.scalar_summary("loss", cnn.loss)
+            loss_summary = tf.summary.scalar("loss", cnn.loss)
 
             # Train Summaries
-            train_summary_op = tf.merge_summary([loss_summary, grad_summaries_merged])
+            train_summary_op = tf.summary.merge([loss_summary, grad_summaries_merged])
             train_summary_dir = out_dir #os.path.join(out_dir, "summaries", "train")
-            train_summary_writer = tf.train.SummaryWriter(train_summary_dir, sess.graph)
+            train_summary_writer = tf.summary.FileWriter(train_summary_dir, sess.graph)
 
             config_pro = projector.ProjectorConfig()
             embedding = config_pro.embeddings.add()
@@ -133,9 +139,9 @@ for fold_id in fold_ids:
             projector.visualize_embeddings(train_summary_writer, config_pro)
 
             # Dev summaries
-            dev_summary_op = tf.merge_summary([loss_summary])
+            dev_summary_op = tf.summary.merge([loss_summary])
             dev_summary_dir = os.path.join(out_dir, "summaries", "dev")
-            dev_summary_writer = tf.train.SummaryWriter(dev_summary_dir, sess.graph)
+            dev_summary_writer = tf.summary.FileWriter(dev_summary_dir, sess.graph)
 
             # Checkpoint directory. Tensorflow assumes this directory already exists so we need to create it
             checkpoint_dir = out_dir #os.path.abspath(os.path.join(out_dir, "checkpoints"))
@@ -153,11 +159,12 @@ for fold_id in fold_ids:
 
             # Initialize all variables
             sess.run(tf.global_variables_initializer())
+            sess.run(tf.local_variables_initializer())
 
             ## Initialize word_embedding
             print ('Loading w2v model...')
-            #w2v_model = gensim.models.Word2Vec.load_word2vec_format('~/workspace/nlp/word2vec/models/GoogleNews-vectors-negative300.bin', binary=True)
-            w2v_model = gensim.models.Word2Vec.load_word2vec_format('~/workspace/nlp/word2vec/models/vectors-reviews-restaurants.bin', binary=True)
+            w2v_model = gensim.models.Word2Vec.load_word2vec_format('~/workspace/nlp/word2vec/models/GoogleNews-vectors-negative300.bin', binary=True)
+            #w2v_model = gensim.models.Word2Vec.load_word2vec_format('~/workspace/nlp/word2vec/models/vectors-reviews-restaurants.bin', binary=True)
             print ('Load w2v model done.')
 
             W_init = []
@@ -179,12 +186,15 @@ for fold_id in fold_ids:
                   cnn.input_y: y_batch,
                   cnn.dropout_keep_prob: FLAGS.dropout_keep_prob
                 }
-                _, step, summaries, loss= sess.run(
-                    [train_op, global_step, train_summary_op, cnn.loss],
+                _, step, summaries, loss, y_preds = sess.run(
+                    [train_op, global_step, train_summary_op, cnn.loss, cnn.scores],
                     feed_dict)
                 time_str = datetime.datetime.now().isoformat()
                 if step % 1 == 0:
-                    print("{}: step {}, loss {:g}".format(time_str, step, loss))
+                    y_gt = [s[0] for s in y_batch]
+                    y_dt = [s[0] for s in y_preds]
+                    pearsonr, p_value = stats.pearsonr(y_gt, y_dt)
+                    print("{}: step {}, loss {:g}, pearsonr {:g}".format(time_str, step, loss, pearsonr))
                 train_summary_writer.add_summary(summaries, step)
 
             def dev_step(x_batch, y_batch, writer=None):
@@ -196,11 +206,16 @@ for fold_id in fold_ids:
                   cnn.input_y: y_batch,
                   cnn.dropout_keep_prob: 1.0
                 }
-                step, summaries, loss = sess.run(
-                    [global_step, dev_summary_op, cnn.loss],
+                step, summaries, loss, y_preds= sess.run(
+                    [global_step, dev_summary_op, cnn.loss, cnn.scores],
                     feed_dict)
+
+                y_gt = [s[0] for s in y_batch]
+                y_dt = [s[0] for s in y_preds]
+                pearsonr, p_value = stats.pearsonr(y_gt, y_dt)
+
                 time_str = datetime.datetime.now().isoformat()
-                print("{}: step {}, loss {:g}".format(time_str, step, loss))
+                print("{}: step {}, loss {:g}, pearsonr {:g}".format(time_str, step, loss, pearsonr))
                 if writer:
                     writer.add_summary(summaries, step)
 
@@ -215,7 +230,7 @@ for fold_id in fold_ids:
                 current_step = tf.train.global_step(sess, global_step)
                 if current_step % FLAGS.evaluate_every == 0:
                     print("\nEvaluation:")
-                    dev_step(x_dev, y_dev)#, writer=dev_summary_writer)
+                    dev_step(x_dev, y_dev, writer=dev_summary_writer)
                     print("")
                 if current_step % FLAGS.checkpoint_every == 0:
                     path = saver.save(sess, checkpoint_prefix, global_step=current_step)

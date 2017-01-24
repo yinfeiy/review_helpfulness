@@ -26,7 +26,7 @@ class TextCNN(object):
                 name="W")
             self.embedding = W
             self.embedding_no_gradient = tf.stop_gradient(self.embedding)
-            self.embedded_chars = tf.nn.embedding_lookup(self.embedding_no_gradient, self.input_x)
+            self.embedded_chars = tf.nn.embedding_lookup(self.embedding, self.input_x)
             self.embedded_chars_expanded = tf.expand_dims(self.embedded_chars, -1)
 
         # Create a convolution + maxpool layer for each filter size
@@ -73,14 +73,8 @@ class TextCNN(object):
             l2_loss += tf.nn.l2_loss(W)
             l2_loss += tf.nn.l2_loss(b)
             self.scores = tf.nn.xw_plus_b(self.h_drop, W, b, name="scores")
-            self.predictions = tf.argmax(self.scores, 1, name="predictions")
 
         # CalculateMean cross-entropy loss
         with tf.name_scope("loss"):
-            #losses = tf.nn.softmax_cross_entropy_with_logits(self.scores, self.input_y)
-            losses = tf.pow(self.scores-self.input_y, 2)
+            losses = tf.square(self.scores-self.input_y)
             self.loss = tf.reduce_mean(losses) + l2_reg_lambda * l2_loss
-
-        # Accuracy
-        with tf.name_scope("accuracy"):
-            self.pearsonr = tf.contrib.metrics.streaming_pearson_correlation(self.scores, self.input_y)
