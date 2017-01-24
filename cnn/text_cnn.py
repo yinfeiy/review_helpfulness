@@ -77,22 +77,10 @@ class TextCNN(object):
 
         # CalculateMean cross-entropy loss
         with tf.name_scope("loss"):
-            losses = tf.nn.softmax_cross_entropy_with_logits(self.scores, self.input_y)
+            #losses = tf.nn.softmax_cross_entropy_with_logits(self.scores, self.input_y)
+            losses = tf.pow(self.scores-self.input_y, 2)
             self.loss = tf.reduce_mean(losses) + l2_reg_lambda * l2_loss
 
         # Accuracy
         with tf.name_scope("accuracy"):
-            correct_predictions = tf.equal(self.predictions, tf.argmax(self.input_y, 1))
-            self.accuracy = tf.reduce_mean(tf.cast(correct_predictions, "float"), name="accuracy")
-
-            true_positives = tf.cast( tf.logical_and(correct_predictions, tf.equal(tf.argmax(self.input_y,1), 1)), "float")
-            det_positives = tf.cast( tf.equal(self.predictions, 1), "float")
-            all_positives = tf.cast( tf.equal(tf.argmax(self.input_y, 1), 1), "float")
-
-            self.precision = tf.divide(tf.reduce_sum(true_positives), tf.reduce_sum(det_positives), name="precision")
-            self.recall = tf.divide(tf.reduce_sum(true_positives), tf.reduce_sum(all_positives), name="recall")
-
-            self.tp = tf.reduce_sum(true_positives, name='tp')
-            self.ap = tf.reduce_sum(all_positives, name='ap')
-            self.dp = tf.reduce_sum(det_positives, name='dp')
-
+            self.pearsonr = tf.contrib.metrics.streaming_pearson_correlation(self.scores, self.input_y)

@@ -8,12 +8,13 @@ import tensorflow as tf
 import numpy as np
 import os, time, datetime, copy
 import gensim
+import data_helpers
 from text_cnn import TextCNN
 from tensorflow.contrib import learn
 from tensorflow.contrib.tensorboard.plugins import projector
 
 # Model Hyperparameters
-tf.flags.DEFINE_integer("genre", "outdoor", "Genre (default: outdoor)")
+tf.flags.DEFINE_string("genre", "outdoor", "Genre (default: outdoor)")
 tf.flags.DEFINE_integer("embedding_dim", 300, "Dimensionality of character embedding (default: 300)")
 tf.flags.DEFINE_string("filter_sizes", "3,4,5", "Comma-separated filter sizes (default: '3,4,5')")
 tf.flags.DEFINE_integer("num_filters", 128, "Number of filters per filter size (default: 128)")
@@ -37,46 +38,50 @@ for attr, value in sorted(FLAGS.__flags.items()):
     print("{}={}".format(attr.upper(), value))
 print("")
 
+genre = FLAGS.genre
+
 data_path = '../dataset_v2/t5/{0}'
 cache_path = '../dataset_v2/t5/cache/{0}'
 
 data_path_genre = data_path.format( genre )
 cache_path_genre = cache_path.format( genre )
 
-fname_fold = join(data_path_genre, 'folds.txt')
-fname_score = join(data_path_genre, 'labels.txt')
+fname_fold = os.path.join(data_path_genre, 'folds.txt')
+fname_score = os.path.join(data_path_genre, 'labels.txt')
+fname_review = os.path.join(data_path_genre, 'reviews.txt')
 
 folds = [ int(f) for f in get_content(fname_fold) ]
 scores = read_scores_from_file_2(fname_score)
+reviews = get_content(fname_review)
 
 # Load data
 print ('Loading Data...')
 
 fold_ids = range(10)
-x_train_text, y_train, x_dev_text, y_dev, labels = data_helpers.load_data_and_labels_multi_class(FLAGS.train_data_file, FLAGS.test_data_file)
 
-all_text = copy.deepcopy(x_train_text)
-all_text.extend(x_dev_text)
-max_document_length = max([len(x.split(" ")) for x in all_text])
+max_document_length = max([len(x.split(" ")) for x in reviews])
 vocab_processor = learn.preprocessing.VocabularyProcessor(max_document_length)
-vocab_processor.fit(all_text)
+vocab_processor.fit(reviews)
 
-x_train = np.array(list(vocab_processor.transform(x_train_text)))
-x_dev = np.array(list(vocab_processor.transform(x_dev_text)))
-y_train = np.array(y_train)
-y_dev = np.array(y_dev)
+x_all = np.array(list(vocab_processor.transform(reviews)))
+x_all = np.array(x_all)
 
-print("Vocabulary Size: {:d}".format(len(vocab_processor.vocabulary_)))
-print("Train/Dev split: {:d}/{:d}".format(len(y_train), len(y_dev)))
+for fold_id in fold_ids:
+    ###################################################################
+    # partition
+    y_train, x_train = get_train_data(scores, x_all, folds, fold_id)
+    y_test, x_test = get_test_data(scores, x_all, folds, fold_id)
+    y_dev, x_dev = get_dev_data(scores, x_all, folds, fold_id)
 
-for label_idx, label in enumerate(labels):
+    x_train.extend(x_dev)
+    y_train.extend(y_dev)
 
-    y_train_single = []; y_dev_single = []
-    for y in y_train[:,label_idx]:
-        y_train_single.append([0,1] if y==1 else [1,0])
-    for y in y_dev[:,label_idx]:
-        y_dev_single.append([0,1] if y==1 else [1,0])
-    y_train_single = np.array(y_train_single); y_dev_single = np.array(y_dev_single)
+    x_train = np.array(x_train)
+    y_train = np.array([ [y] for y in y_train])
+    x_dev = np.array(x_test)
+    y_dev = np.array(y_test)
+
+    y_train = np.array(y_train); y_dev = np.array(y_dev)
 
     with tf.Graph().as_default():
         session_conf = tf.ConfigProto(
@@ -86,7 +91,7 @@ for label_idx, label in enumerate(labels):
         sess = tf.Session(config=session_conf)
         with sess.as_default():
             cnn=TextCNN(sequence_length = x_train.shape[1],
-                    num_classes = y_train_single.shape[1],
+                    num_classes = y_train.shape[1],
                     vocab_size = len(vocab_processor.vocabulary_),
                     embedding_size = FLAGS.embedding_dim,
                     filter_sizes = list(map(int, FLAGS.filter_sizes.split(","))),
@@ -104,7 +109,7 @@ for label_idx, label in enumerate(labels):
             out_dir = os.path.abspath(os.path.join(os.path.curdir, "runs_info", timestamp))
             print("Writing to {}\n".format(out_dir))
 
-            # Summaries for loss and accuracy
+            # Summaries for loss
             grad_summaries = []
             for g, v in grads_and_vars:
                 if g is not None:
@@ -115,12 +120,9 @@ for label_idx, label in enumerate(labels):
             grad_summaries_merged = tf.merge_summary(grad_summaries)
 
             loss_summary = tf.scalar_summary("loss", cnn.loss)
-            acc_summary = tf.scalar_summary("accuracy", cnn.accuracy)
-            prec_summary = tf.scalar_summary("precision", cnn.precision)
-            recl_summary = tf.scalar_summary("recall", cnn.recall)
 
             # Train Summaries
-            train_summary_op = tf.merge_summary([loss_summary, acc_summary, prec_summary, recl_summary, grad_summaries_merged])
+            train_summary_op = tf.merge_summary([loss_summary, grad_summaries_merged])
             train_summary_dir = out_dir #os.path.join(out_dir, "summaries", "train")
             train_summary_writer = tf.train.SummaryWriter(train_summary_dir, sess.graph)
 
@@ -131,7 +133,7 @@ for label_idx, label in enumerate(labels):
             projector.visualize_embeddings(train_summary_writer, config_pro)
 
             # Dev summaries
-            dev_summary_op = tf.merge_summary([loss_summary, acc_summary])
+            dev_summary_op = tf.merge_summary([loss_summary])
             dev_summary_dir = os.path.join(out_dir, "summaries", "dev")
             dev_summary_writer = tf.train.SummaryWriter(dev_summary_dir, sess.graph)
 
@@ -153,9 +155,11 @@ for label_idx, label in enumerate(labels):
             sess.run(tf.global_variables_initializer())
 
             ## Initialize word_embedding
+            print ('Loading w2v model...')
             #w2v_model = gensim.models.Word2Vec.load_word2vec_format('~/workspace/nlp/word2vec/models/GoogleNews-vectors-negative300.bin', binary=True)
-            w2v_model = gensim.models.Word2Vec.load_word2vec_format('~/workspace/nlp/word2vec/models/vectors-reviews-electronics.bin', binary=True)
-            #w2v_model = gensim.models.Word2Vec.load_word2vec_format('~/workspace/nlp/word2vec/models/vectors-reviews-restaurants.bin', binary=True)
+            w2v_model = gensim.models.Word2Vec.load_word2vec_format('~/workspace/nlp/word2vec/models/vectors-reviews-restaurants.bin', binary=True)
+            print ('Load w2v model done.')
+
             W_init = []
             for v in vks:
                 try:
@@ -175,12 +179,12 @@ for label_idx, label in enumerate(labels):
                   cnn.input_y: y_batch,
                   cnn.dropout_keep_prob: FLAGS.dropout_keep_prob
                 }
-                _, step, summaries, loss, accuracy, precision, recall= sess.run(
-                    [train_op, global_step, train_summary_op, cnn.loss, cnn.accuracy, cnn.precision, cnn.recall],
+                _, step, summaries, loss= sess.run(
+                    [train_op, global_step, train_summary_op, cnn.loss],
                     feed_dict)
                 time_str = datetime.datetime.now().isoformat()
-                if step % 100 == 0:
-                    print("{}: step {}, loss {:g}, acc {:g}, prec {:g}, recl {:g}".format(time_str, step, loss, accuracy, precision, recall))
+                if step % 1 == 0:
+                    print("{}: step {}, loss {:g}".format(time_str, step, loss))
                 train_summary_writer.add_summary(summaries, step)
 
             def dev_step(x_batch, y_batch, writer=None):
@@ -192,17 +196,17 @@ for label_idx, label in enumerate(labels):
                   cnn.input_y: y_batch,
                   cnn.dropout_keep_prob: 1.0
                 }
-                step, summaries, loss, accuracy, precision, recall = sess.run(
-                    [global_step, dev_summary_op, cnn.loss, cnn.accuracy, cnn.precision, cnn.recall],
+                step, summaries, loss = sess.run(
+                    [global_step, dev_summary_op, cnn.loss],
                     feed_dict)
                 time_str = datetime.datetime.now().isoformat()
-                print("{}: step {}, loss {:g}, acc {:g}, prec {:g}, recl {:g}".format(time_str, step, loss, accuracy, precision, recall))
+                print("{}: step {}, loss {:g}".format(time_str, step, loss))
                 if writer:
                     writer.add_summary(summaries, step)
 
             # Generate batches
             batches = data_helpers.batch_iter(
-                list(zip(x_train, y_train_single)), FLAGS.batch_size, FLAGS.num_epochs)
+                list(zip(x_train, y_train)), FLAGS.batch_size, FLAGS.num_epochs)
 
             # Training loop. For each batch...
             for batch in batches:
@@ -211,7 +215,7 @@ for label_idx, label in enumerate(labels):
                 current_step = tf.train.global_step(sess, global_step)
                 if current_step % FLAGS.evaluate_every == 0:
                     print("\nEvaluation:")
-                    dev_step(x_dev, y_dev_single)#, writer=dev_summary_writer)
+                    dev_step(x_dev, y_dev)#, writer=dev_summary_writer)
                     print("")
                 if current_step % FLAGS.checkpoint_every == 0:
                     path = saver.save(sess, checkpoint_prefix, global_step=current_step)
