@@ -16,24 +16,24 @@ else:
 
 feature_name = sys.argv[1]
 
-fold_path    = '../cache/folds/'
-model_path   = '../cache/models/'
-result_path  = '../cache/results/'
-feature_path = '../cache/features/'
-score_path   = '../dataset/labels/'
+data_path = '../dataset_v2/t5/{0}'
+cache_path = '../dataset_v2/t5/cache/{0}'
 
 score_type = 'xofy'
 
 genres = sys.argv[2:]
 
 for genre in genres:
+    data_path_genre = data_path.format( genre )
+    cache_path_genre = cache_path.format( genre )
+
     print 'processing {0}'.format(genre)
-    fname_fold = join(fold_path, '{0}.reviews'.format(genre))
-    fname_score = join(score_path, '{0}.{1}'.format(genre, score_type))
-    fname_feature = join(feature_path, '{0}/{1}.feat'.format(genre, feature_name))
+    fname_fold = join(data_path_genre, 'folds.txt')
+    fname_score = join(data_path_genre, 'labels.txt')
+    fname_feature = join(cache_path_genre, 'features/{0}.feat'.format(feature_name))
 
     folds = [ int(f) for f in get_content(fname_fold) ]
-    scores = read_scores_from_file(fname_score)
+    scores = read_scores_from_file_2(fname_score)
     features = read_features_from_file(fname_feature)
 
     # Filter out invalid items
@@ -60,7 +60,7 @@ for genre in genres:
         # Down sampling for genres has too much examples
         step_size = 1
         if genre in ['outdoor']:
-            step_size = 3
+            step_size = 1
         elif genre in ['electronics']:
             step_size = 10
         elif genre in ['home']:
@@ -68,7 +68,7 @@ for genre in genres:
         x_train = x_train[1:-1:step_size]
         y_train = y_train[1:-1:step_size]
 
-        if True:
+        if False:
             mse = [0]*4 # mseuracy
             for cc in range(4):
                 tmpC = math.pow(10, cc-2)
@@ -80,26 +80,26 @@ for genre in genres:
             mse_i = mse.index(min(mse))
             best_c = math.pow(10, mse_i-2)
         else:
-            best_c = 1.0
+            best_c = 1
 
         print 'The best C is: ', best_c
 
         if LIBLINEAR:
             m = train(y_train, x_train, '-s 11 -q -c {0}'.format(best_c) )
             y_pred, mse_test, y_pred_2 = predict(y_test, x_test, m)
-            save_model( '{0}/{1}.{2}.fold_{3}.{4}.liblinear.regression.model'.format(model_path, genre, score_type, fold_id, feature_name), m );
-            out_file = '{0}/{1}.{2}.fold_{3}.{4}.liblinear.regression.pred'.format(result_path, genre, score_type, fold_id, feature_name)
+            #save_model( '{0}/{1}.{2}.fold_{3}.{4}.liblinear.regression.model'.format(model_path, genre, score_type, fold_id, feature_name), m );
+            #out_file = '{0}/{1}.{2}.fold_{3}.{4}.liblinear.regression.pred'.format(result_path, genre, score_type, fold_id, feature_name)
         else:
             m = svm_train(y_train, x_train, '-s 3 -t 2 -q -c {0}'.format(best_c) )
-            #print "Training error: "
-            #y_pred, mse_test, y_pred_2 = svm_predict(y_train, x_train, m)
-            #print "Testing error: "
+            print "Training error: "
+            y_pred, mse_test, y_pred_2 = svm_predict(y_train, x_train, m)
+            print "Testing error: "
             y_pred, mse_test, y_pred_2 = svm_predict(y_test, x_test, m)
-            svm_save_model( '{0}/{1}.{2}.fold_{3}.{4}.libsvm.regression.model'.format(model_path, genre, score_type, fold_id, feature_name), m );
-            out_file = '{0}/{1}.{2}.fold_{3}.{4}.libsvm.regression.pred'.format(result_path, genre, score_type, fold_id, feature_name)
+            #svm_save_model( '{0}/{1}.{2}.fold_{3}.{4}.libsvm.regression.model'.format(model_path, genre, score_type, fold_id, feature_name), m );
+            #out_file = '{0}/{1}.{2}.fold_{3}.{4}.libsvm.regression.pred'.format(result_path, genre, score_type, fold_id, feature_name)
 
-        fout = open(out_file, 'w+')
-        for i in  range(len(y_test)):
-            ostr = "{0} {1} {2}\n".format(y_test[i], y_pred[i], y_pred_2[i][0])
-            fout.write(ostr)
-        fout.close()
+        #fout = open(out_file, 'w+')
+        #for i in  range(len(y_test)):
+        #    ostr = "{0} {1} {2}\n".format(y_test[i], y_pred[i], y_pred_2[i][0])
+        #    fout.write(ostr)
+        #fout.close()

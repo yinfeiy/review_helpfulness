@@ -2,14 +2,19 @@
 
 import os, sys, math, re
 
-feature_path = '../cache/features/'
-dict_path = '../lexical/lexical_dict/'
-review_path = '../dataset/reviews_lemma/'
+feature_path = '../dataset_v2/t5/cache/{0}/features/'
+data_path = '../dataset_v2/t5/{0}/'
 
 genres = sys.argv[1:]
 
 for genre in genres:
-    ugr_dict_file = os.path.join(dict_path, '{0}_cutoff.ugr'.format(genre))
+    genre_path = data_path.format(genre)
+    genre_feature_path = feature_path.format(genre)
+
+    if not os.path.exists(genre_feature_path):
+        os.makedirs(genre_feature_path)
+
+    ugr_dict_file = os.path.join(genre_path, 'ugr_cutoff.dict')
     ugr_dict = {}
     feat_keys = []
     with open(ugr_dict_file, 'r') as f:
@@ -21,10 +26,12 @@ for genre in genres:
             ugr_dict[word] = df
             feat_keys.append(word)
 
-    fname_feature = os.path.join(*[feature_path, genre, 'ugr.feat'])
+
+    fname_feature = os.path.join(*[genre_feature_path, 'ugr.feat'])
+    print 'Storing features at: ', fname_feature
     fout = open(fname_feature, 'w+')
 
-    fname_review = os.path.join(review_path, '{0}.reviews'.format(genre))
+    fname_review = os.path.join(genre_path, 'reviews.txt')
     with open(fname_review) as fin:
         reviews = fin.readlines()
         N = len(reviews)

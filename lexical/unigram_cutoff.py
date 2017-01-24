@@ -2,7 +2,7 @@ import os, sys, random, re
 from glob import glob
 from sets import Set
 
-dict_path = './lexical_dict/'
+data_path = '../dataset_v2/t5/{0}/'
 
 # Load stop words
 stop_file = 'english.stop'
@@ -16,8 +16,8 @@ genres = sys.argv[1:]
 
 # Remove low frequet words (<3 ) and stop words
 for genre in genres:
-    ifname = os.path.join(dict_path, '{0}.ugr'.format(genre))
-    ofname = os.path.join(dict_path, '{0}_cutoff.ugr'.format(genre))
+    ifname = os.path.join(data_path.format(genre), 'ugr.dict'.format(genre))
+    ofname = os.path.join(data_path.format(genre), 'ugr_cutoff.dict'.format(genre))
 
     fout = open(ofname, 'w+')
     with open(ifname, 'r') as f:

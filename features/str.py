@@ -2,16 +2,22 @@
 
 import os, sys, random, re
 
-feature_path = '../cache/features/'
-review_path = '../dataset/reviews_lemma/'
+feature_path = '../dataset_v2/t5/cache/{0}/features/'
+data_path = '../dataset_v2/t5/{0}/'
 
 genres = sys.argv[1:]
 
 for genre in genres:
+    genre_path = data_path.format(genre)
+    genre_feature_path = feature_path.format(genre)
 
-    fname_feature = os.path.join(*[feature_path, genre, 'str.feat'])
+    if not os.path.exists(genre_feature_path):
+        os.makedirs(genre_feature_path)
+
+    fname_feature = os.path.join(*[genre_feature_path, 'str.feat'])
+
     fout = open(fname_feature, 'w+')
-    fname_review = os.path.join(review_path, '{0}.reviews'.format(genre))
+    fname_review = os.path.join(genre_path, 'reviews.txt')
 
     features = []
     reviews = open(fname_review).readlines()
@@ -34,7 +40,7 @@ for genre in genres:
             for token in tokens:
                 pattern = re.compile(r'!')
                 num_exclamation += len( re.findall(pattern, token) )
-            if token[-1] == '?':
+            if tokens[-1] == '?':
                 num_question_sent += 1
         # the average sentence length
         avg_sent_leng = round(1.0*num_token / num_sent, 3)

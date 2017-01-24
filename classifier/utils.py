@@ -25,6 +25,15 @@ def read_scores_from_file(fname):
             scores.append(score)
     return scores
 
+def read_scores_from_file_2(fname):
+    scores = []
+    with open(fname, 'r') as f:
+        for line in f.readlines():
+            ts = line.strip().split()
+            score = float(ts[0])
+            scores.append(score)
+    return scores
+
 def read_asps_from_file(fname):
     asps = []
     with open(fname) as f:

@@ -2,16 +2,15 @@ import os, sys, random
 from glob import glob
 from sets import Set
 
-in_path = '../dataset/reviews_lemma/'
-out_path = './lexical_dict/'
+data_path = '../dataset_v2/t5/{0}/'
 
 genres = sys.argv[1:]
 
 for genre in genres:
     print 'processing ', genre
-    fname = os.path.join(in_path, genre+'.reviews')
+    fname = os.path.join(data_path.format(genre), 'reviews.txt')
 
-    ofname = os.path.join(out_path, genre+'.ugr')
+    ofname = os.path.join(data_path.format(genre), 'ugr.dict')
     ugr_df = {}
 
     print genre
