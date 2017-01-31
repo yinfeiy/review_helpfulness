@@ -8,7 +8,7 @@ genres = sys.argv[1:]
 
 for genre in genres:
     print 'processing ', genre
-    fname = os.path.join(data_path.format(genre), 'reviews.txt')
+    fname = os.path.join(data_path.format(genre), 'lemmas.txt')
 
     ofname = os.path.join(data_path.format(genre), 'ugr.dict')
     ugr_df = {}
@@ -18,6 +18,7 @@ for genre in genres:
 
         reviews = stream.readlines()
         for review in reviews:
+            review = review.lower()
             sents = review.split('|')
 
             for sent in sents:
@@ -30,6 +31,10 @@ for genre in genres:
                         ugr_df[word] = 1
 
     fout = open(ofname, 'w+')
-    for key in ugr_df.keys():
+    keys = ugr_df.keys()
+    keys = [key for key in ugr_df.keys() if ugr_df[key] >=3 ]
+
+    keys.sort(key=lambda x:ugr_df[x], reverse=True)
+    for key in keys:
         fout.write('{0} {1}\n'.format(key, ugr_df[key]))
     fout.close()

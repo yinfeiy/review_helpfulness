@@ -27,6 +27,7 @@ tf.flags.DEFINE_integer("batch_size", 64, "Batch Size (default: 64)")
 tf.flags.DEFINE_integer("num_epochs", 100, "Number of training epochs (default: 200)")
 tf.flags.DEFINE_integer("evaluate_every", 100, "Evaluate model on dev set after this many steps (default: 100)")
 tf.flags.DEFINE_integer("checkpoint_every", 5000, "Save model after this many steps (default: 100)")
+
 # Misc Parameters
 tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
 tf.flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
@@ -41,8 +42,8 @@ print("")
 
 genre = FLAGS.genre
 
-data_path = '../dataset_v2/t5/{0}'
-cache_path = '../dataset_v2/t5/cache/{0}'
+data_path = '../dataset_v2/t0/{0}'
+cache_path = '../dataset_v2/t0/cache/{0}'
 
 data_path_genre = data_path.format( genre )
 cache_path_genre = cache_path.format( genre )
@@ -52,7 +53,7 @@ fname_score = os.path.join(data_path_genre, 'labels.txt')
 fname_review = os.path.join(data_path_genre, 'reviews.txt')
 
 folds = [ int(f) for f in get_content(fname_fold) ]
-scores = read_scores_from_file_2(fname_score)
+scores = read_scores_from_file(fname_score)
 reviews = get_content(fname_review)
 
 # Load data
@@ -79,7 +80,7 @@ for fold_id in fold_ids:
     y_train.extend(y_dev)
 
     # Sampling
-    x_train, y_train = sample_dataset(x_train, y_train, 20000)
+    #x_train, y_train = sample_dataset(x_train, y_train, 20000)
 
     x_train = np.array(x_train)
     y_train = np.array([ [y] for y in y_train])

@@ -18,8 +18,8 @@ feature_list = ['ugr', 'str', 'inquirer', 'liwc']
 
 feature_name = '_'.join(feature_list)
 
-data_path = '../dataset_v2/t5/{0}'
-cache_path = '../dataset_v2/t5/cache/{0}'
+data_path = '../dataset_v2/t0/{0}'
+cache_path = '../dataset_v2/t0/cache/{0}'
 
 genres = sys.argv[1:]
 
@@ -43,7 +43,8 @@ for genre in genres:
     fname_score = join(data_path_genre, 'labels.txt')
 
     folds = [ int(f) for f in get_content(fname_fold) ]
-    scores = read_scores_from_file_2(fname_score)
+    #scores = read_scores_from_file_2(fname_score)
+    scores = read_scores_from_file(fname_score)
 
     num = len(folds)
     features = [ {} for i in range(num) ]

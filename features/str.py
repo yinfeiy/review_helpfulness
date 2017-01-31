@@ -2,8 +2,8 @@
 
 import os, sys, random, re
 
-feature_path = '../dataset_v2/t5/cache/{0}/features/'
-data_path = '../dataset_v2/t5/{0}/'
+feature_path = '../dataset_v2/t0/cache/{0}/features/'
+data_path = '../dataset_v2/t0/{0}/'
 
 genres = sys.argv[1:]
 
@@ -15,6 +15,7 @@ for genre in genres:
         os.makedirs(genre_feature_path)
 
     fname_feature = os.path.join(*[genre_feature_path, 'str.feat'])
+    print 'Storing features at: ', fname_feature
 
     fout = open(fname_feature, 'w+')
     fname_review = os.path.join(genre_path, 'reviews.txt')
@@ -33,14 +34,17 @@ for genre in genres:
         # number of question sentences
         num_question_sent = 0
         for sent in sents:
+            sent = sent.strip()
+            if len(sent)==0:
+                continue
             num_sent += 1
 
-            tokens = sent.strip().split(' ')
+            tokens = sent.split(' ')
             num_token += len(tokens)
             for token in tokens:
                 pattern = re.compile(r'!')
                 num_exclamation += len( re.findall(pattern, token) )
-            if tokens[-1] == '?':
+            if token[-1] == '?':
                 num_question_sent += 1
         # the average sentence length
         avg_sent_leng = round(1.0*num_token / num_sent, 3)

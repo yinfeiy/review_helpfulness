@@ -3,7 +3,6 @@ import re
 import itertools
 from collections import Counter
 
-
 def clean_str(string):
     """
     Tokenization/string cleaning for all datasets except for SST.
@@ -23,103 +22,6 @@ def clean_str(string):
     string = re.sub(r"\?", " \? ", string)
     string = re.sub(r"\s{2,}", " ", string)
     return string.strip().lower()
-
-
-def load_data_and_labels(positive_data_file, negative_data_file):
-    """
-    Loads MR polarity data from files, splits the data into words and generates labels.
-    Returns split sentences and labels.
-    """
-    # Load data from files
-    positive_examples = list(open(positive_data_file, "r").readlines())
-    positive_examples = [s.strip() for s in positive_examples]
-    negative_examples = list(open(negative_data_file, "r").readlines())
-    negative_examples = [s.strip() for s in negative_examples]
-    # Split by words
-    x_text = positive_examples + negative_examples
-    x_text = [clean_str(sent) for sent in x_text]
-    # Generate labels
-    positive_labels = [[0, 1] for _ in positive_examples]
-    negative_labels = [[1, 0] for _ in negative_examples]
-    y = np.concatenate([positive_labels, negative_labels], 0)
-    return [x_text, y]
-
-def load_data_and_labels_multi_class(train_data_file, test_data_file, verbose=False):
-
-    # Loda data from files
-    train_examples = list(open(train_data_file, "r").readlines())
-    train_examples = [te.strip().split('\t' ) for te in train_examples]
-    train_text, train_labels_text = [te[0].strip() for te in train_examples], [te[1:] for te in train_examples]
-
-    test_examples = list(open(test_data_file, "r").readlines())
-    test_examples = [te.strip().split('\t' ) for te in test_examples]
-    test_text, test_labels_text = [te[0].strip() for te in test_examples], [te[1:] for te in test_examples]
-
-    # Split by words
-    x_train_text = [clean_str(sent) for sent in train_text]
-    x_test_text  = [clean_str(sent) for sent in test_text]
-
-    # Generate labels
-    train_labels_count = {}
-    for labels_text in train_labels_text:
-        for label in labels_text:
-            train_labels_count[label] = train_labels_count.get(label, 0) + 1
-
-    labels = list(set([label for labels in train_labels_text for label in labels]))
-    labels.sort(key=lambda x:train_labels_count[x], reverse=True)
-
-    if verbose:
-        test_labels_count = {}
-        for labels_text in test_labels_text:
-            for label in labels_text:
-                test_labels_count[label] = test_labels_count.get(label, 0) + 1
-        for label in labels:
-            print label, train_labels_count[label], test_labels_count.get(label, 0)
-
-    y_train = [ [1 if label in labels_text else 0 for label in labels] for labels_text in train_labels_text]
-    y_test = [ [1 if label in labels_text else 0 for label in labels] for labels_text in test_labels_text]
-
-    return x_train_text, y_train, x_test_text, y_test, labels
-
-
-def load_data_and_term_labels(train_data_file, test_data_file):
-    # Loda data from files
-    train_examples = list(open(train_data_file, "r").readlines())
-    train_examples = [te.strip().split('\t' ) for te in train_examples]
-    train_text, train_labels_text = [te[0].strip() for te in train_examples], [te[1:] for te in train_examples]
-
-    test_examples = list(open(test_data_file, "r").readlines())
-    test_examples = [te.strip().split('\t' ) for te in test_examples]
-    test_text, test_labels_text = [te[0].strip() for te in test_examples], [te[1:] for te in test_examples]
-
-    # Split by words
-    x_train_text = [clean_str(sent) for sent in train_text]
-    x_test_text  = [clean_str(sent) for sent in test_text]
-
-    # Generate labels
-    y_train_labels = []
-    y_test_labels = []
-
-    labels = set()
-    for labels_text in train_labels_text:
-        labels_single = []
-        for label in labels_text:
-            label, term = label.split('|')
-            labels.add(label)
-
-            labels_single.append((label, term))
-        y_train_labels.append(labels_single)
-
-    for labels_text in test_labels_text:
-        labels_single = []
-        for label in labels_text:
-            label, term = label.split('|')
-            labels_single.append((label, term))
-        y_test_labels.append(labels_single)
-
-    labels = list(labels)
-    labels.sort()
-    return x_train_text, y_train_labels, x_test_text, y_test_labels, labels
 
 
 def batch_iter(data, batch_size, num_epochs, shuffle=True):

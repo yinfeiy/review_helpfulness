@@ -2,8 +2,8 @@
 
 import os, sys, math, re
 
-feature_path = '../dataset_v2/t5/cache/{0}/features/'
-data_path = '../dataset_v2/t5/{0}/'
+feature_path = '../dataset_v2/t0/cache/{0}/features/'
+data_path = '../dataset_v2/t0/{0}/'
 
 genres = sys.argv[1:]
 
@@ -31,7 +31,7 @@ for genre in genres:
     print 'Storing features at: ', fname_feature
     fout = open(fname_feature, 'w+')
 
-    fname_review = os.path.join(genre_path, 'reviews.txt')
+    fname_review = os.path.join(genre_path, 'lemmas.txt')
     with open(fname_review) as fin:
         reviews = fin.readlines()
         N = len(reviews)
@@ -40,12 +40,12 @@ for genre in genres:
             for key in feat_keys:
                 tf_dict[key] = 0
 
-            sents = review.split('|')
+            sents = review.lower().split('|')
             for sent in sents:
                 words = sent.split()
                 for word in words:
                     if tf_dict.has_key(word):
-                            tf_dict[word] += 1
+                        tf_dict[word] += 1
 
             str = ''
             for i in range( len(feat_keys) ):

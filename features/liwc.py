@@ -4,8 +4,8 @@ import os, sys, random, yaml, re
 sys.path.append('/Users/yinfei.yang/workspace/nlp/amazon_review/helpfulness/src/helpfulness/dict/LIWC')
 from liwc_helper import load_liwc_dict, compute_feature_liwc_raw
 
-feature_path = '../dataset_v2/t5/cache/{0}/features/'
-data_path = '../dataset_v2/t5/{0}/'
+feature_path = '../dataset_v2/t0/cache/{0}/features/'
+data_path = '../dataset_v2/t0/{0}/'
 
 genres = sys.argv[1:]
 
@@ -19,6 +19,7 @@ for genre in genres:
         os.makedirs(genre_feature_path)
 
     fname_feature = os.path.join(*[genre_feature_path, 'liwc.feat'])
+    print 'Storing features at: ', fname_feature
     fout = open(fname_feature, 'w+')
 
     fname_review = os.path.join(genre_path, 'reviews.txt')
@@ -26,6 +27,7 @@ for genre in genres:
         reviews = fin.readlines()
         for review in reviews:
             review = review.replace('|', ' ')
+            review = review.lower()
             feat_dict = compute_feature_liwc_raw(review, liwc_keys, liwc_dict)
 
             str = ''
