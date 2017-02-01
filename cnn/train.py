@@ -15,7 +15,7 @@ from tensorflow.contrib.tensorboard.plugins import projector
 from scipy import stats
 
 # Model Hyperparameters
-tf.flags.DEFINE_string("genre", "outdoor", "Genre (default: outdoor)")
+tf.flags.DEFINE_string("genre", "electronics", "Genre (default: outdoor)")
 tf.flags.DEFINE_integer("embedding_dim", 300, "Dimensionality of character embedding (default: 300)")
 tf.flags.DEFINE_string("filter_sizes", "3,4,5", "Comma-separated filter sizes (default: '3,4,5')")
 tf.flags.DEFINE_integer("num_filters", 128, "Number of filters per filter size (default: 128)")
@@ -164,7 +164,7 @@ for fold_id in fold_ids:
 
             ## Initialize word_embedding
             print ('Loading w2v model...')
-            w2v_model = gensim.models.Word2Vec.load_word2vec_format('~/workspace/nlp/word2vec/models/GoogleNews-vectors-negative300.bin', binary=True)
+            w2v_model = gensim.models.Word2Vec.load_word2vec_format('/ssd/word2vec/models/GoogleNews-vectors-negative300.bin', binary=True)
             #w2v_model = gensim.models.Word2Vec.load_word2vec_format('~/workspace/nlp/word2vec/models/vectors-reviews-restaurants.bin', binary=True)
             print ('Load w2v model done.')
 
@@ -198,27 +198,39 @@ for fold_id in fold_ids:
                     print("{}: step {}, loss {:g}, pearsonr {:g}".format(time_str, step, loss, pearsonr))
                 train_summary_writer.add_summary(summaries, step)
 
-            def dev_step(x_batch, y_batch, writer=None):
+            def dev_step(x_test, y_test, writer=None):
                 """
                 Evaluates model on a dev set
                 """
-                feed_dict = {
-                  cnn.input_x: x_batch,
-                  cnn.input_y: y_batch,
-                  cnn.dropout_keep_prob: 1.0
-                }
-                step, summaries, loss, y_preds= sess.run(
-                    [global_step, dev_summary_op, cnn.loss, cnn.scores],
-                    feed_dict)
+                # Generate batches
+                batches = data_helpers.batch_iter(
+                    list(zip(x_test, y_test)), 512, 1)
 
-                y_gt = [s[0] for s in y_batch]
-                y_dt = [s[0] for s in y_preds]
+                y_gt = []; y_dt = []
+                for batch in batches:
+                    x_batch, y_batch = zip(*batch)
+
+                    feed_dict = {
+                      cnn.input_x: x_batch,
+                      cnn.input_y: y_batch,
+                      cnn.dropout_keep_prob: 1.0
+                    }
+
+                    step, summaries, loss, y_preds= sess.run(
+                        [global_step, dev_summary_op, cnn.loss, cnn.scores],
+                        feed_dict)
+
+                    time_str = datetime.datetime.now().isoformat()
+                    print("{}: step {}, loss {:g}".format(time_str, step, loss))
+                    if writer:
+                        writer.add_summary(summaries, step)
+
+                    y_gt.extend([s[0] for s in y_batch])
+                    y_dt.extend([s[0] for s in y_preds])
                 pearsonr, p_value = stats.pearsonr(y_gt, y_dt)
 
-                time_str = datetime.datetime.now().isoformat()
-                print("{}: step {}, loss {:g}, pearsonr {:g}".format(time_str, step, loss, pearsonr))
-                if writer:
-                    writer.add_summary(summaries, step)
+                print(" == pearsonr {:g}".format(pearsonr))
+
 
             # Generate batches
             batches = data_helpers.batch_iter(
